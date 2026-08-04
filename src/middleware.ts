@@ -18,8 +18,8 @@ const intlMiddleware = createMiddleware({
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Laisser passer les routes API publiques
-  if (publicApiRoutes.some((r) => pathname.startsWith(r))) {
+  // Laisser passer toutes les routes API
+  if (pathname.startsWith('/api')) {
     return NextResponse.next();
   }
 
@@ -58,5 +58,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };
