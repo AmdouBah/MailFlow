@@ -19,25 +19,35 @@ export interface SendResult {
   error?: string;
 }
 
+function getDecryptedValue(val?: string): string {
+  if (!val) return '';
+  const decrypted = decrypt(val);
+  return decrypted ? decrypted : val;
+}
+
 export async function createTransporter(settings: SmtpSettings): Promise<nodemailer.Transporter> {
-  const password = decrypt(settings.password || '');
-  const apiKey = decrypt(settings.apiKey || '');
+  const password = getDecryptedValue(settings.password);
+  const apiKey = getDecryptedValue(settings.apiKey);
 
   switch (settings.provider) {
-    case 'gmail':
+    case 'gmail': {
+      const passRaw = apiKey || password;
+      const passClean = passRaw.replace(/\s+/g, '');
       return nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        auth: { user: settings.user!, pass: password || apiKey },
+        service: 'gmail',
+        auth: {
+          user: settings.user?.trim(),
+          pass: passClean,
+        },
       });
+    }
 
     case 'brevo':
       return nodemailer.createTransport({
         host: 'smtp-relay.brevo.com',
         port: 587,
         secure: false,
-        auth: { user: settings.user!, pass: apiKey || password },
+        auth: { user: settings.user?.trim()!, pass: apiKey || password },
       });
 
     case 'resend':
@@ -49,10 +59,9 @@ export async function createTransporter(settings: SmtpSettings): Promise<nodemai
       });
 
     case 'ses': {
-      // Amazon SES via nodemailer-ses-transport ou SMTP SES
       const region = settings.awsRegion || 'eu-west-1';
-      const accessKey = decrypt(settings.awsAccessKey || '');
-      const secretKey = decrypt(settings.awsSecretKey || '');
+      const accessKey = getDecryptedValue(settings.awsAccessKey);
+      const secretKey = getDecryptedValue(settings.awsSecretKey);
       return nodemailer.createTransport({
         host: `email-smtp.${region}.amazonaws.com`,
         port: 587,
