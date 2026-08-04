@@ -21,11 +21,20 @@ interface OpeningsChartProps {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  const date = parseISO(label);
+  const rawDate = payload[0]?.payload?.date || label;
+  let formattedDate = label;
+  try {
+    const date = parseISO(rawDate);
+    if (!isNaN(date.getTime())) {
+      formattedDate = format(date, 'dd MMM yyyy', { locale: fr });
+    }
+  } catch {
+    formattedDate = label;
+  }
   return (
     <div className="card p-3 shadow-lg text-xs min-w-[140px]">
       <p className="font-medium text-foreground mb-2">
-        {format(date, 'dd MMM yyyy', { locale: fr })}
+        {formattedDate}
       </p>
       {payload.map((entry: any) => (
         <div key={entry.name} className="flex items-center justify-between gap-4 py-0.5">
