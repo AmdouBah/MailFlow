@@ -123,7 +123,7 @@ export interface SmtpSettings {
   awsSecretKey?: string;  // chiffré
 }
 
-export type AiProvider = 'gemini' | 'openai' | 'anthropic' | 'custom';
+export type AiProvider = 'gemini' | 'openai' | 'anthropic' | 'deepseek' | 'custom';
 export type AiReplyDelay = 'immediate' | '5min' | '15min' | '1h' | 'disabled';
 export type AiLanguage = 'fr' | 'en' | 'auto';
 

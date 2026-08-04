@@ -31,6 +31,13 @@ export async function generateAiReply(req: AiReplyRequest): Promise<AiReplyResul
       return generateWithOpenAI(apiKey, systemPrompt, userMessage);
     case 'anthropic':
       return generateWithAnthropic(apiKey, systemPrompt, userMessage);
+    case 'deepseek':
+      return generateWithDeepSeek(
+        apiKey,
+        systemPrompt,
+        userMessage,
+        aiSettings.customEndpoint || 'https://api.deepseek.com/v1'
+      );
     case 'custom':
       return generateWithOpenAICompatible(
         apiKey,
@@ -106,6 +113,25 @@ async function generateWithAnthropic(apiKey: string, system: string, message: st
   return {
     response: text?.type === 'text' ? text.text : '',
     provider: 'claude-haiku',
+  };
+}
+
+async function generateWithDeepSeek(
+  apiKey: string, system: string, message: string, endpoint: string
+): Promise<AiReplyResult> {
+  const openai = new OpenAI({ apiKey, baseURL: endpoint });
+  const completion = await openai.chat.completions.create({
+    model: 'deepseek-chat',
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: message },
+    ],
+    max_tokens: 300,
+    temperature: 0.7,
+  });
+  return {
+    response: completion.choices[0].message.content || '',
+    provider: 'deepseek-chat',
   };
 }
 

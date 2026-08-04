@@ -251,6 +251,7 @@ export default function SettingsPage() {
                   <option value="gemini">Google Gemini 1.5 Flash (gratuit)</option>
                   <option value="openai">OpenAI GPT-4o mini</option>
                   <option value="anthropic">Anthropic Claude Haiku</option>
+                  <option value="deepseek">DeepSeek V3 (économique)</option>
                   <option value="custom">API compatible OpenAI (custom)</option>
                 </select>
               </div>
@@ -260,10 +261,21 @@ export default function SettingsPage() {
                 <input type="password" value={settings.ai?.apiKey || ''} onChange={(e) => updateAi('apiKey', e.target.value)} className="input" placeholder="••••••••" />
               </div>
 
-              {settings.ai?.provider === 'custom' && (
+              {(settings.ai?.provider === 'custom' || settings.ai?.provider === 'deepseek') && (
                 <div className="space-y-1.5">
-                  <label className="label">Endpoint API</label>
-                  <input type="url" value={settings.ai?.customEndpoint || ''} onChange={(e) => updateAi('customEndpoint', e.target.value)} className="input" placeholder="https://api.example.com/v1" />
+                  <label className="label">
+                    {settings.ai?.provider === 'deepseek' ? 'Endpoint DeepSeek (optionnel)' : 'Endpoint API'}
+                  </label>
+                  <input
+                    type="url"
+                    value={settings.ai?.customEndpoint || (settings.ai?.provider === 'deepseek' ? 'https://api.deepseek.com/v1' : '')}
+                    onChange={(e) => updateAi('customEndpoint', e.target.value)}
+                    className="input"
+                    placeholder={settings.ai?.provider === 'deepseek' ? 'https://api.deepseek.com/v1' : 'https://api.example.com/v1'}
+                  />
+                  {settings.ai?.provider === 'deepseek' && (
+                    <p className="text-xs text-muted-foreground">Obtenez votre clé sur <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">platform.deepseek.com</a></p>
+                  )}
                 </div>
               )}
 
