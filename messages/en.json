@@ -61,7 +61,13 @@
     "allLists": "All lists",
     "importSuccess": "{{count}} contacts imported successfully",
     "importDuplicates": "{{count}} duplicates skipped",
-    "importErrors": "{{count}} errors"
+    "importErrors": "{{count}} errors",
+    "addContact": "Add contact",
+    "addContactTitle": "Add a new contact",
+    "addContactSuccess": "Contact added successfully",
+    "phone": "Phone",
+    "cancel": "Cancel",
+    "save": "Add contact"
   },
   "import": {
     "title": "Import contacts",

@@ -5,12 +5,12 @@ import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { useContacts } from '@/hooks/useContacts';
 import { AppShell } from '@/components/layout/AppShell';
-import { deleteContact, updateContact } from '@/lib/firebase/firestore';
+import { deleteContact, updateContact, createContact } from '@/lib/firebase/firestore';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   Upload, Search, ChevronLeft, ChevronRight, Trash2,
-  MoreHorizontal, Filter, Users, RefreshCw,
+  MoreHorizontal, Filter, Users, RefreshCw, Plus, UserPlus, X, Loader2,
 } from 'lucide-react';
 import type { ContactStatus } from '@/types';
 
@@ -56,6 +56,50 @@ export default function ContactsPage() {
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageContacts = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
+  const [newCompany, setNewCompany] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newListId, setNewListId] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+
+  async function handleAddContact(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newEmail || !newEmail.includes('@')) {
+      setAddError('Adresse email invalide');
+      return;
+    }
+    setAdding(true);
+    setAddError('');
+    try {
+      await createContact({
+        email: newEmail.trim(),
+        firstName: newFirstName.trim(),
+        lastName: newLastName.trim(),
+        company: newCompany.trim(),
+        phone: newPhone.trim(),
+        status: 'active',
+        lists: newListId ? [newListId] : [],
+        customFields: {},
+      });
+      setShowAddModal(false);
+      setNewEmail('');
+      setNewFirstName('');
+      setNewLastName('');
+      setNewCompany('');
+      setNewPhone('');
+      setNewListId('');
+      refresh();
+    } catch (err: any) {
+      setAddError(err.message || 'Erreur lors de l’ajout');
+    } finally {
+      setAdding(false);
+    }
+  }
 
   async function handleDelete(id: string) {
     if (!confirm('Supprimer ce contact ?')) return;
@@ -108,7 +152,14 @@ export default function ContactsPage() {
             <button onClick={refresh} className="btn-secondary p-2" title="Actualiser">
               <RefreshCw size={16} />
             </button>
-            <Link href={`/${locale}/contacts/import`} className="btn-primary flex items-center gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus size={16} />
+              <span>{t('addContact')}</span>
+            </button>
+            <Link href={`/${locale}/contacts/import`} className="btn-secondary flex items-center gap-2">
               <Upload size={16} />
               <span>{t('import')}</span>
             </Link>
@@ -154,10 +205,19 @@ export default function ContactsPage() {
         ) : filtered.length === 0 ? (
           <div className="card p-12 text-center">
             <Users className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">{t('noContacts')}</p>
-            <Link href={`/${locale}/contacts/import`} className="btn-primary mt-4 inline-flex">
-              <Upload size={16} /> {t('import')}
-            </Link>
+            <p className="text-sm text-muted-foreground mb-4">{t('noContacts')}</p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Plus size={16} />
+                <span>{t('addContact')}</span>
+              </button>
+              <Link href={`/${locale}/contacts/import`} className="btn-secondary inline-flex items-center gap-2">
+                <Upload size={16} /> {t('import')}
+              </Link>
+            </div>
           </div>
         ) : (
           <>
@@ -252,6 +312,126 @@ export default function ContactsPage() {
           </>
         )}
       </div>
+
+      {/* Modal Ajouter un contact */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-card rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5 border border-border relative">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <UserPlus size={20} className="text-primary" />
+                {t('addContactTitle')}
+              </h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddContact} className="space-y-4">
+              {addError && (
+                <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm">
+                  {addError}
+                </div>
+              )}
+
+              <div>
+                <label className="label">{t('email')} *</label>
+                <input
+                  type="email"
+                  required
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="exemple@maisonbah.com"
+                  className="input"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">{t('firstName')}</label>
+                  <input
+                    type="text"
+                    value={newFirstName}
+                    onChange={(e) => setNewFirstName(e.target.value)}
+                    placeholder="Amadou"
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">{t('lastName')}</label>
+                  <input
+                    type="text"
+                    value={newLastName}
+                    onChange={(e) => setNewLastName(e.target.value)}
+                    placeholder="Bah"
+                    className="input"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">{t('company')}</label>
+                  <input
+                    type="text"
+                    value={newCompany}
+                    onChange={(e) => setNewCompany(e.target.value)}
+                    placeholder="Maison Bah"
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">{t('phone')}</label>
+                  <input
+                    type="tel"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="0600000000"
+                    className="input"
+                  />
+                </div>
+              </div>
+
+              {lists.length > 0 && (
+                <div>
+                  <label className="label">{t('lists')}</label>
+                  <select
+                    value={newListId}
+                    onChange={(e) => setNewListId(e.target.value)}
+                    className="input"
+                  >
+                    <option value="">— Aucune liste —</option>
+                    {lists.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="btn-secondary"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={adding}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  {adding && <Loader2 size={16} className="animate-spin" />}
+                  <span>{t('save')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

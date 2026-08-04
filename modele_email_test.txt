@@ -1,0 +1,28 @@
+====================================================================
+MODÈLE 1 : EMAIL DE BIENVENUE (MAISON BAH)
+====================================================================
+Sujet : Bienvenue chez Maison Bah, {{firstName}} ! ✨
+
+Bonjour {{firstName}},
+
+Nous sommes ravis de vous compter parmi nos contacts chez {{company}} !
+
+Maison Bah s'engage à vous apporter le meilleur service et des produits d'exception. N'hésitez pas à nous contacter si vous avez la moindre question.
+
+À très bientôt,
+L'équipe Maison Bah
+
+====================================================================
+MODÈLE 2 : OFFRE SPÉCIALE / NOUVEAUTÉ
+====================================================================
+Sujet : Exclusivité pour {{company}} : Découvrez notre nouvelle collection 🎁
+
+Bonjour {{firstName}},
+
+En tant que membre privilégié de Maison Bah, nous avons le plaisir de vous présenter notre toute dernière sélection en avant-première.
+
+Profitez dès aujourd'hui d'un accès prioritaire à nos offres spéciales.
+
+Chaleureusement,
+Amadou — Maison Bah
+====================================================================
