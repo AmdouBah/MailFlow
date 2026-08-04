@@ -89,10 +89,10 @@ export function EmailEditor({ content, onChange, availableVariables = [], placeh
     const url = window.prompt('URL du lien', previousUrl);
     if (url === null) return;
     if (url === '') {
-      editor.chain().focus().extendMarkToEnd().unsetLink().run();
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
     }
-    editor.chain().focus().extendMarkToEnd().setLink({ href: url }).run();
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
   if (!editor) return null;

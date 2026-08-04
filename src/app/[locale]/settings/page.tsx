@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AppShell } from '@/components/layout/AppShell';
 import { getSettings, updateSettings } from '@/lib/firebase/firestore';
-import { testSmtpConnection } from '@/lib/email/smtp';
 import { encrypt } from '@/lib/utils/crypto';
 import type { AppSettings, SmtpProvider, AiProvider, AiReplyDelay, AiLanguage } from '@/types';
 import { CheckCircle, XCircle, Loader2, Server, Bot, User, Info } from 'lucide-react';
@@ -58,7 +57,12 @@ export default function SettingsPage() {
     setTestingSmtp(true);
     setTestResult(null);
     try {
-      const result = await testSmtpConnection(settings.smtp);
+      const res = await fetch('/api/smtp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: settings.smtp }),
+      });
+      const result = await res.json();
       setTestResult({
         success: result.success,
         message: result.success ? t('testSuccess') : (result.error || t('testFail')),

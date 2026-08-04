@@ -43,7 +43,7 @@ const cards = [
     isPercent: true,
     trend: null,
   },
-] as const;
+];
 
 export function StatsCards({ stats, loading }: StatsCardsProps) {
   const t = useTranslations('dashboard');
