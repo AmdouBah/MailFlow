@@ -75,7 +75,15 @@ export default function SettingsPage() {
   }
 
   function updateSmtp(key: string, value: string | number | boolean) {
-    setSettings((s) => ({ ...s, smtp: { ...s.smtp, [key]: value } as any }));
+    setSettings((s) => {
+      const current = s.smtp || {};
+      const updated = { ...current, [key]: value } as any;
+      if (key === 'password' || key === 'apiKey') {
+        updated.password = value;
+        updated.apiKey = value;
+      }
+      return { ...s, smtp: updated };
+    });
   }
 
   function updateAi(key: string, value: string | boolean) {

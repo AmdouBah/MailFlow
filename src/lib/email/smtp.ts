@@ -31,7 +31,7 @@ export async function createTransporter(settings: SmtpSettings): Promise<nodemai
 
   switch (settings.provider) {
     case 'gmail': {
-      const passRaw = apiKey || password;
+      const passRaw = password || apiKey;
       const passClean = passRaw.replace(/\s+/g, '');
       return nodemailer.createTransport({
         service: 'gmail',
