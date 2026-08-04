@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { importContacts } from '@/lib/firebase/firestore';
 import type { CsvRow } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { rows, listIds } = await request.json() as { rows: CsvRow[]; listIds: string[] };

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
-import { getSettings } from '@/lib/firebase/firestore';
 import { processCampaignBatch } from '@/lib/email/batch';
-import { getContactsByList } from '@/lib/firebase/firestore';
-import type { Campaign, SmtpSettings } from '@/types';
+import type { Campaign, SmtpSettings, Contact } from '@/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,7 +33,17 @@ export async function POST(request: NextRequest) {
     const smtpSettings = settingsSnap.data()!.smtp as SmtpSettings;
 
     // Récupérer les contacts actifs de la liste
-    const contacts = await getContactsByList(campaign.listId);
+    const contactsSnap = await db
+      .collection('contacts')
+      .where('lists', 'array-contains', campaign.listId)
+      .where('status', '==', 'active')
+      .get();
+
+    const contacts = contactsSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as Contact[];
+
     if (contacts.length === 0) {
       return NextResponse.json({ error: 'Aucun contact actif dans cette liste' }, { status: 400 });
     }
