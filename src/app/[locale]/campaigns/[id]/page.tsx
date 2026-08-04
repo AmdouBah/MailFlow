@@ -23,7 +23,7 @@ export default function CampaignDetailPage() {
   const [loadingEmails, setLoadingEmails] = useState(false);
 
   useEffect(() => {
-    if (campaign?.status === 'sent') {
+    if (campaign?.status === 'sent' || campaign?.status === 'failed') {
       setLoadingEmails(true);
       getCampaignEmails(id).then((r) => {
         setEmailRecords(r);
@@ -63,13 +63,36 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
+        {/* Banner d'erreur si la campagne a échoué */}
+        {(campaign.status === 'failed' || campaign.errorMessage) && (
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-sm text-red-900 dark:text-red-200">
+                Échec de l&apos;envoi de la campagne
+              </h4>
+              <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                {campaign.errorMessage || "L'envoi des emails a échoué. Vérifiez vos identifiants SMTP (mot de passe d'application ou clé API) dans Paramètres > Configuration email."}
+              </p>
+              <div className="mt-2">
+                <Link
+                  href={`/${locale}/settings`}
+                  className="text-xs font-semibold underline text-red-800 dark:text-red-300 hover:text-red-900"
+                >
+                  Aller vérifier mes paramètres SMTP →
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Send progress (if sending/paused) */}
         {(campaign.status === 'sending' || campaign.status === 'paused') && (
           <SendProgress campaignId={id} />
         )}
 
         {/* Stats */}
-        {campaign.status === 'sent' && (
+        {(campaign.status === 'sent' || campaign.status === 'failed') && (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
             {[
               { label: 'Envoyés', value: campaign.stats.sent, icon: Mail, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -92,7 +115,7 @@ export default function CampaignDetailPage() {
         )}
 
         {/* Email records table */}
-        {campaign.status === 'sent' && (
+        {(campaign.status === 'sent' || campaign.status === 'failed') && (
           <div className="card">
             <div className="p-4 border-b border-border">
               <h3 className="font-semibold">Détail par contact ({emailRecords.length})</h3>
@@ -145,6 +168,15 @@ export default function CampaignDetailPage() {
                             <span className="flex items-center gap-1 text-xs text-red-600">
                               <XCircle size={12} /> Bounced
                             </span>
+                          ) : rec.status === 'failed' ? (
+                            <div>
+                              <span className="flex items-center gap-1 text-xs text-red-600 font-semibold">
+                                <XCircle size={12} /> Échec
+                              </span>
+                              {rec.errorMessage && (
+                                <p className="text-[10px] text-red-500 max-w-xs mt-0.5">{rec.errorMessage}</p>
+                              )}
+                            </div>
                           ) : (
                             <span className={`badge ${
                               rec.status === 'clicked' ? 'badge-blue' :

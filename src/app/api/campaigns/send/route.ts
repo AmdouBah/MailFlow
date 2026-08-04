@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { processCampaignBatch } from '@/lib/email/batch';
+import { testSmtpConnection } from '@/lib/email/smtp';
 import type { Campaign, SmtpSettings, Contact } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -48,10 +49,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Aucun contact actif dans cette liste' }, { status: 400 });
     }
 
+    // Vérifier la connexion SMTP avant de démarrer l'envoi
+    const testResult = await testSmtpConnection(smtpSettings);
+    if (!testResult.success) {
+      await db.collection('campaigns').doc(campaignId).update({
+        status: 'failed',
+        errorMessage: `Erreur SMTP : ${testResult.error}`,
+      });
+      return NextResponse.json(
+        { error: `Échec SMTP : ${testResult.error}. Vérifiez Paramètres > Configuration email.` },
+        { status: 400 }
+      );
+    }
+
     // Lancer le traitement en arrière-plan (ne pas attendre la fin)
     processCampaignBatch(campaign, contacts, smtpSettings).catch((err) => {
       console.error('[send] Batch error:', err);
-      db.collection('campaigns').doc(campaignId).update({ status: 'paused' });
+      db.collection('campaigns').doc(campaignId).update({
+        status: 'failed',
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
     });
 
     return NextResponse.json({ success: true, totalContacts: contacts.length });

@@ -97,11 +97,15 @@ export default function NewCampaignPage() {
           body: JSON.stringify({ campaignId: id, scheduledAt }),
         });
       } else {
-        await fetch('/api/campaigns/send', {
+        const res = await fetch('/api/campaigns/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ campaignId: id }),
         });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          alert(`Erreur d'envoi : ${errData.error || "Échec de l'envoi (vérifiez votre configuration SMTP en Paramètres)."}`);
+        }
       }
 
       router.push(`/${locale}/campaigns/${id}`);

@@ -31,6 +31,7 @@ export async function processCampaignBatch(
   const totalContacts = contacts.length;
   let totalSent = 0;
   let totalFailed = 0;
+  let lastError = '';
 
   // Mettre à jour le statut en "sending"
   await db.collection('campaigns').doc(campaign.id).update({
@@ -104,6 +105,7 @@ export async function processCampaignBatch(
           });
         } else {
           totalFailed++;
+          lastError = result.error || 'Erreur inconnue SMTP';
           batchWriteBatch.set(emailRef, {
             campaignId: campaign.id,
             contactId: contact.id,
@@ -133,13 +135,23 @@ export async function processCampaignBatch(
     }
   }
 
-  // Marquer la campagne comme envoyée
-  await db.collection('campaigns').doc(campaign.id).update({
-    status: 'sent',
-    sentAt: Timestamp.now(),
+  // Marquer la campagne comme envoyée ou échouée
+  const finalStatus = totalSent > 0 ? 'sent' : 'failed';
+  const updateData: Record<string, any> = {
+    status: finalStatus,
     'stats.sent': totalSent,
+    'stats.failed': totalFailed,
     updatedAt: Timestamp.now(),
-  });
+  };
+
+  if (totalSent > 0) {
+    updateData.sentAt = Timestamp.now();
+  }
+  if (totalSent === 0 && totalFailed > 0) {
+    updateData.errorMessage = lastError || "Échec de l'envoi SMTP (vérifiez vos identifiants en Paramètres > Configuration email)";
+  }
+
+  await db.collection('campaigns').doc(campaign.id).update(updateData);
 }
 
 function sleep(ms: number): Promise<void> {

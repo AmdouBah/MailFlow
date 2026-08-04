@@ -4,16 +4,25 @@ const KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY
 
 export function encrypt(text: string): string {
   if (!text) return '';
+  if (text.startsWith('U2FsdGVkX1')) return text;
   return CryptoJS.AES.encrypt(text, KEY).toString();
 }
 
 export function decrypt(cipherText: string): string {
   if (!cipherText) return '';
   try {
-    const bytes = CryptoJS.AES.decrypt(cipherText, KEY);
-    return bytes.toString(CryptoJS.enc.Utf8);
+    let current = cipherText;
+    let count = 0;
+    while (current.startsWith('U2FsdGVkX1') && count < 5) {
+      const bytes = CryptoJS.AES.decrypt(current, KEY);
+      const dec = bytes.toString(CryptoJS.enc.Utf8);
+      if (!dec) break;
+      current = dec;
+      count++;
+    }
+    return current;
   } catch {
-    return '';
+    return cipherText;
   }
 }
 

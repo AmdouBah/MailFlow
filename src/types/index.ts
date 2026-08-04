@@ -24,7 +24,7 @@ export interface ContactList {
   createdAt: Date;
 }
 
-export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'cancelled';
+export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'cancelled' | 'failed';
 
 export interface CampaignStats {
   sent: number;
@@ -49,6 +49,7 @@ export interface Campaign {
   status: CampaignStatus;
   scheduledAt?: Date;
   sentAt?: Date;
+  errorMessage?: string;
   stats: CampaignStats;
   batchProgress?: {
     total: number;
@@ -73,6 +74,7 @@ export interface EmailRecord {
   clickedAt?: Date;
   bouncedAt?: Date;
   messageId?: string;
+  errorMessage?: string;
   trackingPixelId: string;
   unsubscribeToken: string;
   clickTrackingIds?: string[];
