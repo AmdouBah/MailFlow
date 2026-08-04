@@ -18,7 +18,8 @@ function getAdminApp(): App {
     throw new Error('FIREBASE_ADMIN_PRIVATE_KEY_BASE64 is not set');
   }
 
-  const privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+  let privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+  privateKey = privateKey.replace(/\\n/g, '\n');
 
   adminApp = initializeApp({
     credential: cert({

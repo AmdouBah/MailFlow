@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { useContacts } from '@/hooks/useContacts';
@@ -37,6 +37,16 @@ export default function ContactsPage() {
   const [listFilter, setListFilter] = useState('');
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const listId = params.get('list');
+      if (listId) {
+        setListFilter(listId);
+      }
+    }
+  }, []);
 
   const { contacts, lists, loading, error, refresh } = useContacts({
     status: statusFilter || undefined,

@@ -18,6 +18,7 @@ import {
   writeBatch,
   onSnapshot,
   QueryConstraint,
+  getCountFromServer,
 } from 'firebase/firestore';
 import { db } from './config';
 import type {
@@ -130,6 +131,23 @@ export async function createContact(data: Omit<Contact, 'id' | 'createdAt' | 'up
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
+
+  // Mettre à jour le contactCount des listes associées
+  if (data.lists && data.lists.length > 0) {
+    for (const listId of data.lists) {
+      try {
+        const listRef = doc(db, 'lists', listId);
+        const listDoc = await getDoc(listRef);
+        if (listDoc.exists()) {
+          const count = (listDoc.data().contactCount || 0) + 1;
+          await updateDoc(listRef, { contactCount: count });
+        }
+      } catch (e) {
+        console.error('Erreur mise à jour contactCount:', e);
+      }
+    }
+  }
+
   return ref.id;
 }
 
@@ -138,7 +156,27 @@ export async function updateContact(id: string, data: Partial<Contact>): Promise
 }
 
 export async function deleteContact(id: string): Promise<void> {
-  await deleteDoc(doc(db, 'contacts', id));
+  const contactDoc = await getDoc(doc(db, 'contacts', id));
+  if (contactDoc.exists()) {
+    const data = contactDoc.data();
+    await deleteDoc(doc(db, 'contacts', id));
+    if (data.lists && Array.isArray(data.lists)) {
+      for (const listId of data.lists) {
+        try {
+          const listRef = doc(db, 'lists', listId);
+          const listDoc = await getDoc(listRef);
+          if (listDoc.exists()) {
+            const count = Math.max(0, (listDoc.data().contactCount || 1) - 1);
+            await updateDoc(listRef, { contactCount: count });
+          }
+        } catch (e) {
+          console.error('Erreur mise à jour contactCount:', e);
+        }
+      }
+    }
+  } else {
+    await deleteDoc(doc(db, 'contacts', id));
+  }
 }
 
 export async function importContacts(rows: CsvRow[], listIds: string[]): Promise<ImportResult> {
@@ -217,13 +255,34 @@ export async function unsubscribeContact(contactId: string): Promise<void> {
 
 export async function getLists(): Promise<ContactList[]> {
   const snap = await getDocs(query(collection(db, 'lists'), orderBy('createdAt', 'desc')));
-  return snap.docs.map((d) => ({
-    id: d.id,
-    name: d.data().name,
-    description: d.data().description,
-    contactCount: d.data().contactCount || 0,
-    createdAt: toDate(d.data().createdAt),
-  }));
+  const lists = await Promise.all(
+    snap.docs.map(async (d) => {
+      let count = d.data().contactCount || 0;
+      try {
+        const countSnap = await getCountFromServer(
+          query(
+            collection(db, 'contacts'),
+            where('lists', 'array-contains', d.id),
+            where('status', '==', 'active')
+          )
+        );
+        count = countSnap.data().count;
+        if (count !== (d.data().contactCount || 0)) {
+          updateDoc(doc(db, 'lists', d.id), { contactCount: count }).catch(() => {});
+        }
+      } catch {
+        // En cas d'erreur, garder la valeur stockée
+      }
+      return {
+        id: d.id,
+        name: d.data().name,
+        description: d.data().description,
+        contactCount: count,
+        createdAt: toDate(d.data().createdAt),
+      };
+    })
+  );
+  return lists;
 }
 
 export async function createList(name: string, description?: string): Promise<string> {

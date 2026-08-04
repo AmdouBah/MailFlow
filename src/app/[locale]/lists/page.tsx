@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { getLists, createList, deleteList, updateList } from '@/lib/firebase/firestore';
 import type { ContactList } from '@/types';
@@ -140,10 +141,14 @@ export default function ListsPage() {
                 )}
 
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Link
+                    href={`/${locale}/contacts?list=${list.id}`}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
+                    title="Voir les contacts de cette liste"
+                  >
                     <Users size={14} className="text-primary" />
                     {list.contactCount.toLocaleString('fr-FR')} {t('contacts')}
-                  </span>
+                  </Link>
                   <span className="text-xs text-muted-foreground">
                     {format(list.createdAt, 'dd/MM/yyyy', { locale: locale === 'fr' ? fr : undefined })}
                   </span>
