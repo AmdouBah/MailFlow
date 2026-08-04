@@ -1,6 +1,6 @@
 import CryptoJS from 'crypto-js';
 
-const KEY = process.env.ENCRYPTION_KEY || 'default-key-change-me-in-production!';
+const KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || 'mailflow-secret-key-change-me-now';
 
 export function encrypt(text: string): string {
   if (!text) return '';

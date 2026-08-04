@@ -42,13 +42,15 @@ export async function createTransporter(settings: SmtpSettings): Promise<nodemai
       });
     }
 
-    case 'brevo':
+    case 'brevo': {
+      const passRaw = password || apiKey;
       return nodemailer.createTransport({
         host: 'smtp-relay.brevo.com',
         port: 587,
         secure: false,
-        auth: { user: settings.user?.trim()!, pass: apiKey || password },
+        auth: { user: settings.user?.trim()!, pass: passRaw?.trim() },
       });
+    }
 
     case 'resend':
       return nodemailer.createTransport({
