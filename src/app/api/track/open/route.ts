@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase/admin';
+import { dbQuery, dbPatch } from '@/lib/firebase/firestoreRest';
 import { hashIp } from '@/lib/utils/crypto';
-import { Timestamp } from 'firebase-admin/firestore';
 
 // GET /api/track/open?id=<trackingPixelId>
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const trackingId = searchParams.get('id');
 
-  // Retourner le pixel immédiatement (ne pas faire attendre le navigateur)
+  // Retourner le pixel immédiatement (1x1 GIF transparent)
   const pixel = Buffer.from(
     'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
     'base64'
@@ -24,42 +23,37 @@ export async function GET(request: NextRequest) {
 
   if (!trackingId) return response;
 
-  // Enregistrement en arrière-plan (ne pas bloquer la réponse)
   const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-  
+
+  // Enregistrement en arrière-plan (ne pas bloquer la réponse)
   setImmediate(async () => {
     try {
-      const db = getAdminDb();
-      const snap = await db
-        .collection('emails')
-        .where('trackingPixelId', '==', trackingId)
-        .limit(1)
-        .get();
+      const emails = await dbQuery('emails', [
+        { field: 'trackingPixelId', op: 'EQUAL', value: trackingId },
+      ], undefined, 1);
 
-      if (snap.empty) return;
+      if (emails.length === 0) return;
 
-      const emailDoc = snap.docs[0];
-      const emailData = emailDoc.data();
+      const emailDoc = emails[0];
+      if (emailDoc.openedAt) return; // déjà ouvert
 
-      // Ne pas enregistrer si déjà ouvert
-      if (emailData.openedAt) return;
-
-      const batch = db.batch();
-      batch.update(emailDoc.ref, {
+      await dbPatch(`emails/${emailDoc.id}`, {
         status: 'opened',
-        openedAt: Timestamp.now(),
+        openedAt: new Date().toISOString(),
         ipHash: hashIp(ip),
       });
 
       // Incrémenter stats campagne
-      const campRef = db.collection('campaigns').doc(emailData.campaignId);
-      const campSnap = await campRef.get();
-      if (campSnap.exists) {
-        const opened = (campSnap.data()?.stats?.opened || 0) + 1;
-        batch.update(campRef, { 'stats.opened': opened });
+      if (emailDoc.campaignId) {
+        const { dbGet } = await import('@/lib/firebase/firestoreRest');
+        const camp = await dbGet(`campaigns/${emailDoc.campaignId}`);
+        if (camp) {
+          const stats = (camp.stats as Record<string, number>) || {};
+          await dbPatch(`campaigns/${emailDoc.campaignId}`, {
+            'stats.opened': (stats.opened || 0) + 1,
+          });
+        }
       }
-
-      await batch.commit();
     } catch (err) {
       console.error('[track/open]', err);
     }

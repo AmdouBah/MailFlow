@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase/admin';
+import { dbGet } from '@/lib/firebase/firestoreRest';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const db = getAdminDb();
-    const campSnap = await db.collection('campaigns').doc(params.id).get();
-    if (!campSnap.exists) {
+    const campaignData = await dbGet(`campaigns/${params.id}`);
+    if (!campaignData) {
       return NextResponse.json({ error: 'Campagne introuvable' }, { status: 404 });
     }
 
-    const campaignData = campSnap.data()!;
-    const stats = campaignData.stats || {};
+    const stats = (campaignData.stats as Record<string, number>) || {};
     const sent = stats.sent || 0;
 
     return NextResponse.json({
@@ -32,6 +30,7 @@ export async function GET(
       },
     });
   } catch (err) {
+    console.error('[campaigns/stats]', err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

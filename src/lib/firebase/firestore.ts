@@ -255,34 +255,29 @@ export async function unsubscribeContact(contactId: string): Promise<void> {
 
 export async function getLists(): Promise<ContactList[]> {
   const snap = await getDocs(query(collection(db, 'lists'), orderBy('createdAt', 'desc')));
-  const lists = await Promise.all(
-    snap.docs.map(async (d) => {
-      let count = d.data().contactCount || 0;
-      try {
-        const countSnap = await getCountFromServer(
-          query(
-            collection(db, 'contacts'),
-            where('lists', 'array-contains', d.id),
-            where('status', '==', 'active')
-          )
-        );
-        count = countSnap.data().count;
-        if (count !== (d.data().contactCount || 0)) {
-          updateDoc(doc(db, 'lists', d.id), { contactCount: count }).catch(() => {});
-        }
-      } catch {
-        // En cas d'erreur, garder la valeur stockée
-      }
-      return {
-        id: d.id,
-        name: d.data().name,
-        description: d.data().description,
-        contactCount: count,
-        createdAt: toDate(d.data().createdAt),
-      };
-    })
-  );
-  return lists;
+  // Use stored contactCount directly — no N+1 queries
+  return snap.docs.map((d) => ({
+    id: d.id,
+    name: d.data().name,
+    description: d.data().description,
+    contactCount: d.data().contactCount || 0,
+    createdAt: toDate(d.data().createdAt),
+  }));
+}
+
+export async function refreshListCount(listId: string): Promise<void> {
+  try {
+    const countSnap = await getCountFromServer(
+      query(
+        collection(db, 'contacts'),
+        where('lists', 'array-contains', listId),
+        where('status', '==', 'active')
+      )
+    );
+    await updateDoc(doc(db, 'lists', listId), { contactCount: countSnap.data().count });
+  } catch {
+    // silencieux
+  }
 }
 
 export async function createList(name: string, description?: string): Promise<string> {

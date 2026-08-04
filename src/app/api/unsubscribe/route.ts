@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase/admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { dbQuery, dbPatch, dbGet } from '@/lib/firebase/firestoreRest';
 
 // GET /api/unsubscribe?token=<unsubscribeToken>
 export async function GET(request: NextRequest) {
@@ -13,54 +12,45 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const db = getAdminDb();
-
     // Trouver l'email par son token de désinscription
-    const emailSnap = await db
-      .collection('emails')
-      .where('unsubscribeToken', '==', token)
-      .limit(1)
-      .get();
+    const emails = await dbQuery('emails', [
+      { field: 'unsubscribeToken', op: 'EQUAL', value: token },
+    ], undefined, 1);
 
-    if (emailSnap.empty) {
+    if (emails.length === 0) {
       return NextResponse.redirect(`${appUrl}/unsubscribe?status=not_found`);
     }
 
-    const emailData = emailSnap.docs[0].data();
-    const contactId = emailData.contactId;
-    const campaignId = emailData.campaignId;
+    const emailData = emails[0];
+    const contactId = emailData.contactId as string;
+    const campaignId = emailData.campaignId as string;
 
-    // Mettre à jour le statut du contact
-    const contactRef = db.collection('contacts').doc(contactId);
-    const contactSnap = await contactRef.get();
-
-    if (!contactSnap.exists) {
+    // Vérifier le contact
+    const contact = await dbGet(`contacts/${contactId}`);
+    if (!contact) {
       return NextResponse.redirect(`${appUrl}/unsubscribe?status=error`);
     }
 
-    const currentStatus = contactSnap.data()?.status;
-    
-    if (currentStatus === 'unsubscribed') {
+    if (contact.status === 'unsubscribed') {
       return NextResponse.redirect(`${appUrl}/unsubscribe?status=already`);
     }
 
-    const firestoreBatch = db.batch();
-    
-    firestoreBatch.update(contactRef, {
+    // Mettre à jour le statut du contact
+    await dbPatch(`contacts/${contactId}`, {
       status: 'unsubscribed',
-      updatedAt: Timestamp.now(),
+      updatedAt: new Date().toISOString(),
     });
 
     // Incrémenter les stats de désinscription
-    const campRef = db.collection('campaigns').doc(campaignId);
-    const campSnap = await campRef.get();
-    if (campSnap.exists) {
-      firestoreBatch.update(campRef, {
-        'stats.unsubscribed': (campSnap.data()?.stats?.unsubscribed || 0) + 1,
-      });
+    if (campaignId) {
+      const camp = await dbGet(`campaigns/${campaignId}`);
+      if (camp) {
+        const stats = (camp.stats as Record<string, number>) || {};
+        await dbPatch(`campaigns/${campaignId}`, {
+          'stats.unsubscribed': (stats.unsubscribed || 0) + 1,
+        });
+      }
     }
-
-    await firestoreBatch.commit();
 
     return NextResponse.redirect(`${appUrl}/unsubscribe?status=success`);
   } catch (err) {
