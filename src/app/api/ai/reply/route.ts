@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { contactId, contactEmail, contactName, incomingMessage, campaignId, originalEmailId } = body;
 
-    const settings = await dbGet('settings/main') || {};
+    const settings = (await dbGet('settings/main') || {}) as Record<string, unknown>;
     const aiSettings = settings.ai as AiSettings;
     const smtpSettings = settings.smtp as SmtpSettings;
     const senderSettings = (settings.sender as { name?: string; email?: string }) || {};
