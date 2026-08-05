@@ -4,6 +4,7 @@ import { testSmtpConnection } from '@/lib/email/smtp';
 import type { Campaign, SmtpSettings, Contact } from '@/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 secondes max pour Vercel Serverless
 
 const PROJECT_ID = process.env.FIREBASE_ADMIN_PROJECT_ID
   || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
@@ -196,15 +197,17 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Lancer le traitement en arrière-plan
-    processCampaignBatch(campaign, contacts, smtpSettings).catch((err) => {
+    // Lancer le traitement et attendre sa réalisation (requis sur Serverless Vercel)
+    try {
+      await processCampaignBatch(campaign, contacts, smtpSettings);
+    } catch (err) {
       console.error('[send] Batch error:', err);
-      firestorePatch(`campaigns/${campaignId}`, {
+      await firestorePatch(`campaigns/${campaignId}`, {
         status: 'failed',
         errorMessage: err instanceof Error ? err.message : String(err),
       });
-    });
+      return NextResponse.json({ error: 'Erreur lors de l’envoi des emails' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, totalContacts: contacts.length });
   } catch (err) {
