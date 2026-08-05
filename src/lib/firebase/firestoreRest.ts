@@ -161,16 +161,33 @@ export async function dbPatch(path: string, fields: Record<string, unknown>): Pr
   const updateMask: string[] = [];
 
   for (const [key, val] of Object.entries(fields)) {
-    firestoreFields[key] = toFirestore(val);
     updateMask.push(`updateMask.fieldPaths=${encodeURIComponent(key)}`);
+    
+    // Convert dot notation (e.g. "stats.sent") to nested objects for Firestore payload
+    const parts = key.split('.');
+    let current = firestoreFields;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!current[part]) {
+        current[part] = { mapValue: { fields: {} } };
+      }
+      current = (current[part] as any).mapValue.fields;
+    }
+    current[parts[parts.length - 1]] = toFirestore(val);
   }
 
   const url = `${withKey(`${BASE}/${path}`)}&${updateMask.join('&')}`;
-  await fetch(url, {
+  const res = await fetch(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields: firestoreFields }),
   });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`[dbPatch] Error patching ${path}:`, text);
+    throw new Error(`Firestore dbPatch failed: ${res.status} ${text}`);
+  }
 }
 
 /** SET (create or overwrite) a document */
@@ -179,9 +196,15 @@ export async function dbSet(path: string, fields: Record<string, unknown>): Prom
   for (const [key, val] of Object.entries(fields)) {
     firestoreFields[key] = toFirestore(val);
   }
-  await fetch(withKey(`${BASE}/${path}`), {
+  const res = await fetch(withKey(`${BASE}/${path}`), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields: firestoreFields }),
   });
+  
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`[dbSet] Error setting ${path}:`, text);
+    throw new Error(`Firestore dbSet failed: ${res.status} ${text}`);
+  }
 }
