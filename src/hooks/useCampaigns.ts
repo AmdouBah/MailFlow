@@ -32,7 +32,10 @@ export function useCampaignLive(id: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     const unsub = subscribeToCampaign(id, (c) => {
       setCampaign(c);
       setLoading(false);

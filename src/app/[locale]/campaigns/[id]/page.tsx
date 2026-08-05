@@ -36,10 +36,16 @@ export default function CampaignDetailPage() {
   useEffect(() => {
     if (campaign?.status === 'sent' || campaign?.status === 'failed') {
       setLoadingEmails(true);
-      getCampaignEmails(id).then((r) => {
-        setEmailRecords(r);
-        setLoadingEmails(false);
-      });
+      getCampaignEmails(id)
+        .then((r) => {
+          setEmailRecords(r || []);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch campaign emails:', err);
+        })
+        .finally(() => {
+          setLoadingEmails(false);
+        });
     }
   }, [id, campaign?.status]);
 

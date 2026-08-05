@@ -331,32 +331,49 @@ export async function updateCampaign(id: string, data: Partial<Campaign>): Promi
   await updateDoc(doc(db, 'campaigns', id), { ...data, updatedAt: Timestamp.now() });
 }
 
-export function subscribeToCampaign(id: string, callback: (c: Campaign) => void) {
-  return onSnapshot(doc(db, 'campaigns', id), (snap) => {
-    if (snap.exists()) callback(campaignFromDoc(snap as QueryDocumentSnapshot<DocumentData>));
-  });
+export function subscribeToCampaign(id: string, callback: (c: Campaign | null) => void) {
+  return onSnapshot(
+    doc(db, 'campaigns', id),
+    (snap) => {
+      if (snap.exists()) {
+        callback(campaignFromDoc(snap as QueryDocumentSnapshot<DocumentData>));
+      } else {
+        callback(null);
+      }
+    },
+    (err) => {
+      console.error('subscribeToCampaign error:', err);
+      callback(null);
+    }
+  );
 }
 
 // ─── Email Records ────────────────────────────────────────────────────────────
 
 export async function getCampaignEmails(campaignId: string): Promise<EmailRecord[]> {
-  const snap = await getDocs(
-    query(collection(db, 'emails'), where('campaignId', '==', campaignId), orderBy('sentAt', 'desc'))
-  );
-  return snap.docs.map((d) => ({
-    id: d.id,
-    campaignId: d.data().campaignId,
-    contactId: d.data().contactId,
-    email: d.data().email,
-    status: d.data().status,
-    sentAt: d.data().sentAt ? toDate(d.data().sentAt) : undefined,
-    openedAt: d.data().openedAt ? toDate(d.data().openedAt) : undefined,
-    clickedAt: d.data().clickedAt ? toDate(d.data().clickedAt) : undefined,
-    bouncedAt: d.data().bouncedAt ? toDate(d.data().bouncedAt) : undefined,
-    messageId: d.data().messageId,
-    trackingPixelId: d.data().trackingPixelId,
-    unsubscribeToken: d.data().unsubscribeToken,
-  }));
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'emails'), where('campaignId', '==', campaignId))
+    );
+    const records = snap.docs.map((d) => ({
+      id: d.id,
+      campaignId: d.data().campaignId,
+      contactId: d.data().contactId,
+      email: d.data().email,
+      status: d.data().status,
+      sentAt: d.data().sentAt ? toDate(d.data().sentAt) : undefined,
+      openedAt: d.data().openedAt ? toDate(d.data().openedAt) : undefined,
+      clickedAt: d.data().clickedAt ? toDate(d.data().clickedAt) : undefined,
+      bouncedAt: d.data().bouncedAt ? toDate(d.data().bouncedAt) : undefined,
+      messageId: d.data().messageId,
+      trackingPixelId: d.data().trackingPixelId,
+      unsubscribeToken: d.data().unsubscribeToken,
+    }));
+    return records.sort((a, b) => (b.sentAt?.getTime() || 0) - (a.sentAt?.getTime() || 0));
+  } catch (err) {
+    console.error('Erreur getCampaignEmails:', err);
+    return [];
+  }
 }
 
 export async function getEmailByTrackingId(trackingPixelId: string): Promise<EmailRecord | null> {
