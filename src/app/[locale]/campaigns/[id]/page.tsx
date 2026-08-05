@@ -14,6 +14,17 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ArrowLeft, Mail, Eye, MousePointer, AlertTriangle, UserMinus, CheckCircle, XCircle } from 'lucide-react';
 
+function safeFormatDate(d: any, fmtStr: string): string {
+  if (!d) return '—';
+  try {
+    const dateObj = typeof d?.toDate === 'function' ? d.toDate() : new Date(d);
+    if (isNaN(dateObj.getTime())) return '—';
+    return format(dateObj, fmtStr, { locale: fr });
+  } catch {
+    return '—';
+  }
+}
+
 export default function CampaignDetailPage() {
   const params = useParams();
   const locale = useLocale();
@@ -42,10 +53,13 @@ export default function CampaignDetailPage() {
     );
   }
 
-  const openRate = campaign.stats.sent > 0
-    ? Math.round((campaign.stats.opened / campaign.stats.sent) * 100) : 0;
-  const clickRate = campaign.stats.sent > 0
-    ? Math.round((campaign.stats.clicked / campaign.stats.sent) * 100) : 0;
+  const stats = campaign.stats || { sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0, replied: 0 };
+  const sentCount = stats.sent || 0;
+  const openedCount = stats.opened || 0;
+  const clickedCount = stats.clicked || 0;
+
+  const openRate = sentCount > 0 ? Math.round((openedCount / sentCount) * 100) : 0;
+  const clickRate = sentCount > 0 ? Math.round((clickedCount / sentCount) * 100) : 0;
 
   return (
     <AppShell title={campaign.name}>
@@ -95,19 +109,19 @@ export default function CampaignDetailPage() {
         {(campaign.status === 'sent' || campaign.status === 'failed') && (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
             {[
-              { label: 'Envoyés', value: campaign.stats.sent, icon: Mail, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: 'Ouvertures', value: `${openRate}%`, sub: `${campaign.stats.opened}`, icon: Eye, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: 'Clics', value: `${clickRate}%`, sub: `${campaign.stats.clicked}`, icon: MousePointer, color: 'text-purple-600', bg: 'bg-purple-50' },
-              { label: 'Bounces', value: campaign.stats.bounced, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50' },
-              { label: 'Désabonnés', value: campaign.stats.unsubscribed, icon: UserMinus, color: 'text-red-600', bg: 'bg-red-50' },
-              { label: 'Réponses', value: campaign.stats.replied, icon: Mail, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+              { label: 'Envoyés', value: sentCount, icon: Mail, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Ouvertures', value: `${openRate}%`, sub: `${openedCount}`, icon: Eye, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Clics', value: `${clickRate}%`, sub: `${clickedCount}`, icon: MousePointer, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Bounces', value: stats.bounced || 0, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50' },
+              { label: 'Désabonnés', value: stats.unsubscribed || 0, icon: UserMinus, color: 'text-red-600', bg: 'bg-red-50' },
+              { label: 'Réponses', value: stats.replied || 0, icon: Mail, color: 'text-indigo-600', bg: 'bg-indigo-50' },
             ].map(({ label, value, sub, icon: Icon, color, bg }) => (
               <div key={label} className="card p-4">
                 <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-2`}>
                   <Icon size={16} className={color} />
                 </div>
                 <p className="text-xl font-bold">{value}</p>
-                {sub && <p className="text-xs text-muted-foreground">{sub} contacts</p>}
+                {sub !== undefined && <p className="text-xs text-muted-foreground">{sub} contacts</p>}
                 <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
               </div>
             ))}
@@ -141,13 +155,13 @@ export default function CampaignDetailPage() {
                       <tr key={rec.id}>
                         <td className="font-mono text-xs">{rec.email}</td>
                         <td className="text-xs text-muted-foreground">
-                          {rec.sentAt ? format(rec.sentAt, 'dd/MM HH:mm', { locale: fr }) : '—'}
+                          {safeFormatDate(rec.sentAt, 'dd/MM HH:mm')}
                         </td>
                         <td>
                           {rec.openedAt ? (
                             <span className="flex items-center gap-1 text-xs text-emerald-600">
                               <CheckCircle size={12} />
-                              {format(rec.openedAt, 'HH:mm')}
+                              {safeFormatDate(rec.openedAt, 'HH:mm')}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
@@ -157,7 +171,7 @@ export default function CampaignDetailPage() {
                           {rec.clickedAt ? (
                             <span className="flex items-center gap-1 text-xs text-blue-600">
                               <MousePointer size={12} />
-                              {format(rec.clickedAt, 'HH:mm')}
+                              {safeFormatDate(rec.clickedAt, 'HH:mm')}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
@@ -202,8 +216,8 @@ export default function CampaignDetailPage() {
             {[
               { label: 'Objet', value: campaign.subject },
               { label: 'Expéditeur', value: `${campaign.fromName} <${campaign.fromEmail}>` },
-              { label: 'Créée le', value: format(campaign.createdAt, 'dd/MM/yyyy HH:mm', { locale: fr }) },
-              { label: 'Envoyée le', value: campaign.sentAt ? format(campaign.sentAt, 'dd/MM/yyyy HH:mm', { locale: fr }) : '—' },
+              { label: 'Créée le', value: safeFormatDate(campaign.createdAt, 'dd/MM/yyyy HH:mm') },
+              { label: 'Envoyée le', value: safeFormatDate(campaign.sentAt, 'dd/MM/yyyy HH:mm') },
             ].map(({ label, value }) => (
               <div key={label}>
                 <dt className="text-xs text-muted-foreground mb-0.5">{label}</dt>

@@ -37,10 +37,16 @@ import type {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function toDate(val: Timestamp | Date | undefined): Date {
+function toDate(val: unknown): Date {
   if (!val) return new Date();
   if (val instanceof Timestamp) return val.toDate();
-  return val;
+  if (typeof (val as { toDate?: () => Date })?.toDate === 'function') return (val as { toDate: () => Date }).toDate();
+  if (typeof val === 'string' || typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+  if (val instanceof Date) return val;
+  return new Date();
 }
 
 function contactFromDoc(doc: QueryDocumentSnapshot<DocumentData>): Contact {
