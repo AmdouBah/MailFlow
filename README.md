@@ -1,155 +1,139 @@
-# MailFlow — Guide d'installation complet
+# MailFlow ✉️🌊
 
-## Présentation
-MailFlow est une application d'automatisation d'emails white-label. Chaque client dispose de sa propre instance indépendante (GitHub + Vercel + Firebase).
+> Application Web d'automatisation d'emails intelligents et de gestion de campagnes B2B.
 
----
-
-## Prérequis
-- Node.js 18+
-- Compte Firebase (gratuit)
-- Compte Vercel (gratuit)
-- Compte GitHub
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-cyan)](https://tailwindcss.com)
+[![Firebase](https://img.shields.io/badge/Firebase-Admin-orange)](https://firebase.google.com)
+[![AWS SES](https://img.shields.io/badge/AWS-SES-yellow)](https://aws.amazon.com/ses/)
 
 ---
 
-## Étape 1 — Créer le projet Firebase
+## ✨ Fonctionnalités
 
-1. Accédez à [console.firebase.google.com](https://console.firebase.google.com)
-2. Cliquez sur **Ajouter un projet**
-3. Nom du projet : `mailflow-[nom-client]`
-4. Désactivez Google Analytics (optionnel)
-5. **Activer l'authentification** :
-   - Menu > Authentication > Commencer
-   - Onglet "Sign-in method" > Email/Mot de passe > Activer
-   - Créez le compte admin : Authentication > Utilisateurs > Ajouter un utilisateur
-6. **Activer Firestore** :
-   - Menu > Firestore Database > Créer une base de données
-   - Choisissez le mode **Production**
-   - Région recommandée : `europe-west1`
-7. **Règles de sécurité Firestore** (Menu > Firestore > Onglet Règles) :
+| Module | Description |
+|---|---|
+| 📝 **Éditeur Riche** | Éditeur Tiptap intégré pour la rédaction des templates (formatting, liens, variables) |
+| 🚀 **Envoi Multi-Canal** | Routage intelligent via AWS SES et relais SMTP classique (Nodemailer) |
+| 🤖 **Réponses & Génération IA** | Intégration native de OpenAI, Anthropic (Claude) et Google Gemini |
+| 📊 **Dashboard & Tracking** | Suivi temps réel des ouvertures/clics via Recharts |
+| 🔐 **Authentification** | Système d'authentification robuste et gestion de sessions via Firebase |
+| 🌍 **Internationalisation** | Support multilingue natif (next-intl) |
+| ⚙️ **Gestion des Contacts** | Import/Export CSV (PapaParse) avec détection automatique des colonnes |
 
-```
+---
+
+## 🚀 Déploiement sur Vercel (Production)
+
+### Étape 1 — Prérequis
+1. **Compte Vercel** : [vercel.com](https://vercel.com) (gratuit)
+2. **Projet Firebase** : [console.firebase.google.com](https://console.firebase.google.com)
+3. **AWS IAM & SES** : Identifiants AWS avec accès à Simple Email Service
+4. **Clés API IA** : OpenAI, Anthropic ou Google AI Studio
+
+### Étape 2 — Configuration Firebase
+1. Dans Firebase, activez **Firestore Database**.
+2. Allez dans **Paramètres du projet** → **Comptes de service** → **Générer une nouvelle clé privée**.
+3. Notez les valeurs suivantes du fichier JSON :
+   - `project_id`
+   - `client_email`
+   - `private_key`
+
+**Règles Firestore recommandées :**
+```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
 ```
 
-8. **Récupérer les clés** :
-   - Paramètres du projet (roue dentée) > Général
-   - Section "Vos applications" > Ajouter une application Web
-   - Copiez les valeurs `firebaseConfig`
+### Étape 3 — Déploiement Vercel
+1. Allez sur **Vercel** → **Add New Project** → Importez votre dépôt `MailFlow`.
+2. Vercel détectera automatiquement **Next.js**.
+3. Dans la section **Environment Variables**, ajoutez les clés ci-dessous.
 
-9. **Clé Admin SDK** :
-   - Paramètres > Comptes de service > Générer une nouvelle clé privée
-   - Téléchargez le fichier JSON
+#### Variables d'environnement requises :
+```env
+# Configuration Next.js / Auth
+NEXT_PUBLIC_APP_URL=https://votre-app-vercel.app
+
+# Firebase Admin SDK
+FIREBASE_PROJECT_ID=votre-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@votre-projet.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n"
+NEXT_PUBLIC_FIREBASE_API_KEY=xxx
+
+# AWS SES
+AWS_REGION=eu-west-3
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+# APIs Intelligence Artificielle (Selon vos besoins)
+OPENAI_API_KEY=sk-xxx
+ANTHROPIC_API_KEY=sk-ant-xxx
+GEMINI_API_KEY=AIzaSyxxx
+```
+*Note : Assurez-vous d'entourer la clé privée Firebase de guillemets et de préserver les `\n`.*
 
 ---
 
-## Étape 2 — Configurer le projet localement
+## 💻 Développement Local
 
 ```bash
-# Cloner le dépôt
-git clone https://github.com/[votre-org]/mailflow-[client].git
-cd mailflow-[client]
+# 1. Cloner le dépôt
+git clone https://github.com/AmdouBah/MailFlow.git
+cd MailFlow
 
-# Installer les dépendances
+# 2. Installer les dépendances
 npm install
 
-# Copier le fichier d'environnement
-cp .env.local.example .env.local
-```
+# 3. Configurer les variables (Copiez les variables de l'étape 3 dans ce fichier)
+touch .env.local
 
-Ouvrez `.env.local` et remplissez les valeurs :
-
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=mailflow-client.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=mailflow-client
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=mailflow-client.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123:web:abc123
-
-FIREBASE_ADMIN_PROJECT_ID=mailflow-client
-FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-xxx@mailflow-client.iam.gserviceaccount.com
-# Encodez la clé privée en base64 :
-# node -e "const k=require('./serviceAccount.json'); console.log(Buffer.from(k.private_key).toString('base64'))"
-FIREBASE_ADMIN_PRIVATE_KEY_BASE64=LS0tLS1...
-
-ENCRYPTION_KEY=votre-cle-32-caracteres-aleatoires
-NEXTAUTH_SECRET=$(openssl rand -hex 32)
-NEXT_PUBLIC_APP_URL=https://mailflow-client.vercel.app
-```
-
----
-
-## Étape 3 — Lancer en local
-
-```bash
+# 4. Démarrer le serveur de développement
 npm run dev
-# → http://localhost:3000
+```
+L'application sera accessible sur `http://localhost:3000`.
+
+---
+
+## 📁 Structure du Projet
+
+```
+MailFlow/
+├── src/
+│   ├── app/                # Routes App Router Next.js (Pages & API Routes)
+│   ├── components/         # Composants UI réutilisables (Radix UI / Tailwind)
+│   ├── hooks/              # Custom React hooks
+│   ├── lib/
+│   │   ├── aws/            # Configuration Client AWS SES
+│   │   ├── firebase/       # Init Firebase Admin & Client
+│   │   ├── ai/             # Wrappers pour OpenAI, Anthropic, Gemini
+│   │   └── utils/          # Fonctions utilitaires, helpers
+│   ├── types/              # Définitions TypeScript strictes
+│   ├── i18n.ts             # Configuration next-intl
+│   └── middleware.ts       # Middleware Next.js (Auth & Routing)
+├── package.json
+└── tailwind.config.ts
 ```
 
 ---
 
-## Étape 4 — Déployer sur Vercel
+## 🛡️ Sécurité & Architecture
 
-1. Allez sur [vercel.com](https://vercel.com) > New Project
-2. Importez votre dépôt GitHub
-3. Framework : **Next.js** (détecté automatiquement)
-4. **Variables d'environnement** : Ajoutez toutes les variables de `.env.local`
-5. Cliquez **Deploy**
-
----
-
-## Étape 5 — Configurer l'envoi d'emails
-
-Connectez-vous à MailFlow > **Paramètres** > **Configuration email**
-
-### Recommandé : Amazon SES (0,10$ / 1000 emails)
-1. Créez un compte AWS
-2. Activez SES dans une région (ex: `eu-west-1`)
-3. Vérifiez votre domaine expéditeur
-4. Créez une clé IAM avec permission `ses:SendEmail`
-5. Renseignez Access Key + Secret + Region dans les paramètres
-
-### Alternative gratuite : Gmail SMTP
-- Host : `smtp.gmail.com`, Port : `587`
-- Activez l'authentification à 2 facteurs sur votre compte Google
-- Créez un **Mot de passe d'application** (non votre mot de passe habituel)
-- Limite : 500 emails/jour
+| Composant | Implémentation technique |
+|---|---|
+| **App Router & Server Actions** | Protection CSRF native par Next.js, code côté serveur isolé. |
+| **Envoi d'Emails** | AWS SES est géré exclusivement côté serveur (`src/app/api/...`) pour protéger les clés AWS. |
+| **Gestion des Mots de Passe** | `crypto-js` pour le chiffrement des données sensibles des campagnes. |
+| **Validation des Données** | Utilisation de `Zod` pour valider toutes les entrées utilisateurs et API. |
 
 ---
 
-## Étape 6 — Configurer l'IA (optionnel)
-
-Paramètres > **Configuration IA**
-
-### Gratuit : Google Gemini Flash
-1. [aistudio.google.com](https://aistudio.google.com) > Get API Key
-2. Collez la clé dans les paramètres IA
-3. Limite gratuite : 15 requêtes/minute
-
----
-
-## Structure Firestore
-
-Les index composites suivants sont recommandés pour les performances :
-
-| Collection | Champs | Ordre |
-|---|---|---|
-| contacts | status, createdAt | ASC, DESC |
-| emails | campaignId, status | ASC, ASC |
-| emails | campaignId, sentAt | ASC, DESC |
-| aiReplies | status, sentAt | ASC, DESC |
-
----
-
-## Support
-
-Pour toute question, consultez la documentation ou ouvrez une issue GitHub.
+## 📞 Support & Maintenance
+Développé et maintenu par **AmdouBah**. Pour toute question technique, n'hésitez pas à ouvrir une issue.
