@@ -14,12 +14,19 @@ export async function POST(request: NextRequest) {
     const items = payload.items || [payload];
 
     for (const item of items) {
+      // Ignorer les événements de tracking d'email (ouverture, clic, livraison...)
+      const trackingEvents = ['opened', 'delivered', 'clicks', 'hard_bounce', 'soft_bounce', 'unsubscribed', 'blocked', 'spam', 'unique_opened'];
+      if (item.event && trackingEvents.includes(item.event)) {
+        console.log(`[Brevo Webhook] Ignored tracking event: ${item.event}`);
+        continue;
+      }
+
       const fromEmail = item.From?.Address || item.from?.email || item.email;
       const fromName = item.From?.Name || item.from?.name || '';
-      const textBody = item.TextBody || item.text || item.HtmlBody || item.html || '(Message vide)';
+      const textBody = item.TextBody || item.text || item.HtmlBody || item.html || '';
       const subject = item.Subject || item.subject || '';
 
-      if (!fromEmail) continue;
+      if (!fromEmail || (!textBody && !item.inbound_email_processed)) continue;
 
       // 1. Essayer de trouver le contact dans la base de données
       const contacts = await dbQuery('contacts', [
@@ -41,14 +48,21 @@ export async function POST(request: NextRequest) {
       
       // Si l'IA est activée
       if (aiSettings && aiSettings.apiKey && aiSettings.replyDelay !== 'disabled') {
-        const aiResult = await generateAiReply({
-          incomingMessage: textBody,
-          contactName: fromName || (contact ? String(contact.firstName || '') : ''),
-          aiSettings,
-        });
-        
-        aiResponse = aiResult.response;
-        status = aiSettings.supervisionMode ? 'pending' : 'sent';
+        try {
+          const aiResult = await generateAiReply({
+            incomingMessage: textBody || '(Pas de texte)',
+            contactName: fromName || (contact ? String(contact.firstName || '') : ''),
+            aiSettings,
+          });
+          
+          aiResponse = aiResult.response;
+          status = aiSettings.supervisionMode ? 'pending' : 'sent';
+        } catch (err) {
+          console.error('[Brevo Webhook] Error generating AI reply:', err);
+          const errMsg = err instanceof Error ? err.message : String(err);
+          aiResponse = `[Erreur IA: ${errMsg.includes('Insufficient Balance') ? 'Solde insuffisant sur votre compte IA (DeepSeek/OpenAI)' : errMsg}]`;
+          status = 'rejected';
+        }
       }
 
       // 3. Enregistrer la réponse dans Firestore
