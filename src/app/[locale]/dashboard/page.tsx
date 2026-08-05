@@ -92,8 +92,8 @@ export default function DashboardPage() {
                       </p>
                       {campaign.status === 'sent' && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {campaign.stats.sent} envoyés · {campaign.stats.sent > 0
-                            ? Math.round((campaign.stats.opened / campaign.stats.sent) * 100)
+                          {(campaign.stats?.sent || 0)} envoyés · {(campaign.stats?.sent || 0) > 0
+                            ? Math.round(((campaign.stats?.opened || 0) / (campaign.stats?.sent || 1)) * 100)
                             : 0}% ouverture
                         </p>
                       )}

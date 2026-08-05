@@ -83,21 +83,21 @@ export default function CampaignsPage() {
                 {campaign.status === 'sent' && (
                   <div className="hidden sm:flex items-center gap-6 text-center">
                     <div>
-                      <p className="text-sm font-semibold">{campaign.stats.sent.toLocaleString()}</p>
+                      <p className="text-sm font-semibold">{(campaign.stats?.sent || 0).toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">Envoyés</p>
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-emerald-600">
-                        {campaign.stats.sent > 0
-                          ? `${Math.round((campaign.stats.opened / campaign.stats.sent) * 100)}%`
+                        {(campaign.stats?.sent || 0) > 0
+                          ? `${Math.round(((campaign.stats?.opened || 0) / (campaign.stats?.sent || 1)) * 100)}%`
                           : '—'}
                       </p>
                       <p className="text-xs text-muted-foreground">Ouverture</p>
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-blue-600">
-                        {campaign.stats.sent > 0
-                          ? `${Math.round((campaign.stats.clicked / campaign.stats.sent) * 100)}%`
+                        {(campaign.stats?.sent || 0) > 0
+                          ? `${Math.round(((campaign.stats?.clicked || 0) / (campaign.stats?.sent || 1)) * 100)}%`
                           : '—'}
                       </p>
                       <p className="text-xs text-muted-foreground">Clics</p>
